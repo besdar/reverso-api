@@ -31,6 +31,15 @@ module.exports = class Reverso {
     }
 
     /**
+     * Returns an enum of supported languages
+     * @public
+     * @returns {ARABIC: 'arabic', GERMAN: 'german', SPANISH: 'spanish', FRENCH: 'french', HEBREW: 'hebrew', ITALIAN: 'italian', JAPANESE: 'japanese', DUTCH: 'dutch', POLISH: 'polish', PORTUGUESE: 'portuguese', ROMANIAN: 'romanian', RUSSIAN: 'russian', TURKISH: 'turkish', CHINESE: 'chinese', ENGLISH: 'english', UKRAINIAN: 'ukrainian'}
+     */
+    getSupportedLanguages() {
+        return {...SupportedLanguages}
+    }
+
+    /**
      * Get context examples of the query.
      * @public
      * @param text {string}
