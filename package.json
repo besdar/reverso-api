@@ -21,7 +21,7 @@
     "author": "Vyacheslav <slava021323@gmail.com>",
     "license": "MIT",
     "dependencies": {
-        "cheerio": "^1.0.0-rc.5",
+        "cheerio": "1.0.0-rc.12",
         "random-useragent": "^0.5.0"
     },
     "devDependencies": {
