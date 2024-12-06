@@ -502,6 +502,7 @@ module.exports = class Reverso {
                         [
                             SupportedLanguages.RUSSIAN,
                             SupportedLanguages.HEBREW,
+                            SupportedLanguages.ARABIC,
                         ].includes(source)
                             ? '-term'
                             : ''
