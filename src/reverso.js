@@ -1,5 +1,4 @@
 const { getRandom } = require('random-useragent')
-const { load } = require('cheerio')
 
 const available = require('./utils/languages/available.js')
 const compatibility = require('./utils/languages/compatibility.js')
@@ -28,6 +27,31 @@ module.exports = class Reverso {
      */
     constructor({ insecureHTTPParser = false } = {}) {
         this.insecureHTTPParser = insecureHTTPParser
+    }
+
+    /** @private */
+    #parseHTML(htmlString) {
+        let dom
+
+        if (typeof DOMParser !== 'undefined') {
+            const parser = new DOMParser()
+
+            dom = parser.parseFromString(htmlString, 'text/html')
+        } else if (
+            typeof process === 'object' &&
+            typeof process.versions === 'object' &&
+            typeof process.versions.node === 'string'
+        ) {
+            const { JSDOM } = require('jsdom')
+
+            dom = new JSDOM(htmlString).window.document
+        } else {
+            const { DOMParser } = require('@xmldom/xmldom')
+
+            dom = new DOMParser().parseFromString(htmlString, 'text/html')
+        }
+
+        return dom
     }
 
     /**
@@ -80,7 +104,7 @@ module.exports = class Reverso {
         })
         if (!response.success) return this.#handleError(response.error, cb)
 
-        const $ = load(response.data)
+        const document = this.#parseHTML(response.data)
         const sourceDirection =
             source === SupportedLanguages.ARABIC
                 ? `rtl ${SupportedLanguages.ARABIC}`
@@ -94,36 +118,38 @@ module.exports = class Reverso {
                 ? 'rtl'
                 : 'ltr'
 
-        const sourceExamples = $(
+        const sourceExamplesElements = document.querySelectorAll(
             `.example > div.src.${sourceDirection} > span.text`
         )
-            .text()
-            .trim()
-            .split('\n')
-        const targetExamples = $(
+        const targetExamplesElements = document.querySelectorAll(
             `.example > div.trg.${targetDirection} > span.text`
         )
-            .text()
-            .trim()
-            .split('\n')
-        const targetTranslations = $('#translations-content > div')
-            .text()
-            .trim()
-            .split('\n')
+        const targetTranslationsElements = document.querySelectorAll(
+            '#translations-content > div'
+        )
+
+        const sourceExamples = Array.from(sourceExamplesElements).map((el) =>
+            el.textContent.trim()
+        )
+        const targetExamples = Array.from(targetExamplesElements).map((el) =>
+            el.textContent.trim()
+        )
+        const targetTranslations = Array.from(targetTranslationsElements).map(
+            (el) => el.textContent.trim()
+        )
 
         const examples = sourceExamples.map((e, i) => ({
             id: i,
-            source: e.trim(),
-            target: targetExamples[i].trim(),
+            source: e,
+            target: targetExamples[i],
         }))
-        const translations = targetTranslations.map((e) => e.trim())
 
         const result = {
             ok: true,
             text,
             source,
             target,
-            translations,
+            translations: targetTranslations,
             examples,
         }
 
@@ -264,14 +290,14 @@ module.exports = class Reverso {
         })
         if (!response.success) return this.#handleError(response.error, cb)
 
-        const $ = load(response.data)
+        const document = this.#parseHTML(response.data)
 
         const synonyms = []
 
-        $('a.synonym.relevant').each((i, e) => {
+        document.querySelectorAll('a.synonym.relevant').forEach((e, i) => {
             synonyms.push({
                 id: i,
-                synonym: $(e).text(),
+                synonym: e.textContent,
             })
         })
 
@@ -485,16 +511,17 @@ module.exports = class Reverso {
         })
         if (!response.success) return this.#handleError(response.error, cb)
 
-        const $ = load(response.data)
+        const document = this.#parseHTML(response.data)
 
         const verbForms = []
 
-        $('div[class="blue-box-wrap"]').each((i, e) => {
-            const header = $(e).attr('mobile-title').trim()
-            const data = []
+        document
+            .querySelectorAll('div[class="blue-box-wrap"]')
+            .forEach((e, i) => {
+                const header = e.getAttribute('mobile-title').trim()
+                const data = []
 
-            $(e)
-                .find(
+                e.querySelectorAll(
                     `i[class="verbtxt${
                         [
                             SupportedLanguages.RUSSIAN,
@@ -504,21 +531,21 @@ module.exports = class Reverso {
                             ? '-term'
                             : ''
                     }"]`
-                )
-                .each((j, word) => {
-                    if (!$(word).parents('.transliteration').attr('class')) {
-                        data.push($(word).text())
+                ).forEach((word) => {
+                    if (!word.closest('.transliteration').classList.length) {
+                        data.push(word.textContent)
                     }
                 })
 
-            verbForms.push({
-                id: i,
-                conjugation: header,
-                verbs: [...new Set(data)],
+                verbForms.push({
+                    id: i,
+                    conjugation: header,
+                    verbs: [...new Set(data)],
+                })
             })
-        })
 
-        const infinitive = $('#ch_lblVerb').text()
+        const infinitive =
+            document.getElementById('ch_lblVerb')?.textContent || ''
 
         const result = {
             ok: true,
